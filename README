@@ -1,0 +1,23 @@
+*** To build:
+
+ $ make
+
+
+*** To run:
+
+ $ make run
+
+ or:
+
+ $ scala -cp bin SimpleHTTPD [path to document root]
+
+
+*** To connect:
+
+ http://localhost:1701/
+
+
+*** To make documentation:
+
+ $ make docs
+
