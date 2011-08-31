@@ -1,4 +1,5 @@
 package MSquareHttpd;
+import scala.actors.threadpool.LinkedBlockingQueue
 
 /**
  Manages a stable of threads, ready to execute tasks concurrently.
@@ -6,7 +7,7 @@ package MSquareHttpd;
 class ThreadFarm (val queueSize : Int, val numberThreads : Int) {
 
   private val tasks = 
-    new java.util.concurrent.ArrayBlockingQueue[() => Unit] (queueSize) ;
+    new LinkedBlockingQueue[() => Unit] (queueSize) ;
 
 
   /**
