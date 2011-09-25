@@ -66,12 +66,10 @@ trait Producer[O] extends Coroutine {
   var receivers:List[ActorRef] = Nil;
   
   def register[O](consumer:Consumer[O]){
-    val actor = Actor.actorOf(consumer);
-    receivers :+ actor;
+    receivers :+ consumer;
   }
   def register[O,O2](transducer:Transducer[O,O2]){
-    val actor = Actor.actorOf(transducer);
-    receivers :+ actor;
+    receivers :+ transducer;
   }
   
   /**
@@ -105,13 +103,17 @@ trait Producer[O] extends Coroutine {
 /**
  * An I-consumer is a coroutine that consumes type-I objects.
  */
-trait Consumer[I] extends Actor with Coroutine{
+trait Consumer[I] extends Coroutine{
+	val myActor:ActorRef;
 	val senders:List[Producer[I]] = Nil;
 	def linkBack(sender:Producer[I])={
 	  senders :+ sender;
 	}
+	def ! (msg:Message[I]) = {
+	  myActor ! msg;
+	}
 	def startSenders(){
-	  self.start();
+	  myActor.start();
 	  for(val sender:Producer[I] <- senders){
 	    sender.startup();
 	  }

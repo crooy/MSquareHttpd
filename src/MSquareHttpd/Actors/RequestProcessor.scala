@@ -1,6 +1,7 @@
 package MSquareHttpd.Actors;
 import com.weiglewilczek.slf4s.Logging
 import MSquareHttpd._
+import akka.actor.Actor
 
 /**
  A coroutine that consumes HTTP requests and produces HTTP replies. 
@@ -11,7 +12,7 @@ class RequestProcessor extends Transducer[Request,Reply] with Logging {
 
   override def startup () {
     farm.start();
-    self.start();
+    myActor.start();
     startSenders();
   }
 
@@ -23,12 +24,6 @@ class RequestProcessor extends Transducer[Request,Reply] with Logging {
    */
   var hostRouter : HostRouter = 
     EmptyHostRouter ;
-
-  
-  def receive = {
-    case AnyMessage(wrappedRequest: Request) => handleRequest(wrappedRequest);
-    case _ => throw new RuntimeException("unknown message");
-  }
   
   def handleRequest(req:Request) = {
     farm run {
@@ -50,4 +45,12 @@ class RequestProcessor extends Transducer[Request,Reply] with Logging {
         }
       }
   }
+  
+  override val myActor = Actor.actorOf(new Actor{ 
+	  def receive = {
+	    case AnyMessage(wrappedRequest: Request) => handleRequest(wrappedRequest);
+	    case _ => throw new RuntimeException("unknown message");
+	  }
+  })
+
 }

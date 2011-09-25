@@ -10,6 +10,7 @@ import java.io.IOException
 import scala.collection.mutable.SynchronizedQueue
 import com.weiglewilczek.slf4s.Logging
 import MSquareHttpd._
+import akka.actor.Actor
 
 
 class ReplySender extends Consumer[Reply] with Logging{
@@ -18,7 +19,7 @@ class ReplySender extends Consumer[Reply] with Logging{
 
   override def startup () {
     farm.start();
-    self.start();
+    myActor.start();
     startSenders();
   }
 
@@ -94,13 +95,15 @@ class ReplySender extends Consumer[Reply] with Logging{
     }
   }
   
-  def receive = {
-    case AnyMessage(wrappedReply:Reply) =>
-      val conn = wrappedReply.req.connection;
-      conn.send(wrappedReply);
-      logger.debug (" * Sending a reply.") ;
-      ConnectionSelector.add(conn);
-    case _ => throw new RuntimeException("unknown message");
-  }
+  override val myActor = Actor.actorOf(new Actor{
+	  def receive = {
+	    case AnyMessage(wrappedReply:Reply) =>
+	      val conn = wrappedReply.req.connection;
+	      conn.send(wrappedReply);
+	      logger.debug (" * Sending a reply.") ;
+	      ConnectionSelector.add(conn);
+	    case _ => throw new RuntimeException("unknown message");
+	  }
+  })
 
 }

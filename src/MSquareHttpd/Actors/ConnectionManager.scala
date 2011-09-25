@@ -12,6 +12,7 @@ import scala.actors.threadpool.LinkedBlockingQueue
 import com.weiglewilczek.slf4s.Logging
 import scala.collection.mutable.LinkedList
 import scala.collection.mutable.SynchronizedQueue
+import akka.actor.Actor
 
 class ConnectionManager (val httpd : M2HTTPD) extends Transducer[SocketChannel,Request] with Logging {
 
@@ -19,7 +20,7 @@ class ConnectionManager (val httpd : M2HTTPD) extends Transducer[SocketChannel,R
 
   override def startup () {
     farm.start();
-    self.start();
+    myActor.start();
     startSenders();
   }
 
@@ -95,14 +96,16 @@ class ConnectionManager (val httpd : M2HTTPD) extends Transducer[SocketChannel,R
     }
   }
 
-  def receive = {
-    case AnyMessage(wrappedSocket:SocketChannel) =>
-      val conn = new ClientConnection(httpd,wrappedSocket)
-      logger.debug(" * Got a requesting connection.") ;
-      ConnectionSelector.add(conn) ;
-    case _ =>
-      throw new RuntimeException("Unknown message")
-  }
+  override val myActor = Actor.actorOf(new Actor{
+	  def receive = {
+	    case AnyMessage(wrappedSocket:SocketChannel) =>
+	      val conn = new ClientConnection(httpd,wrappedSocket)
+	      logger.debug(" * Got a requesting connection.") ;
+	      ConnectionSelector.add(conn) ;
+	    case _ =>
+	      throw new RuntimeException("Unknown message")
+	  }
+  })
 }
 
 
