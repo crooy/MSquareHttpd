@@ -2,6 +2,7 @@ package MSquareHttpd;
 import java.net.InetAddress
 import java.nio.channels.SocketChannel
 import com.weiglewilczek.slf4s.Logging
+import akka.actor.Actor
 /**
  * A producing coroutine that listens to a port and emits
  * connected sockets.
@@ -36,8 +37,11 @@ class PortListener(val localAddress: InetAddress,
         
         logger.debug(" * Accepted client") ;
 
-        put(client) ;
+        this.send(client);
       }
     }
   }
 }
+
+
+

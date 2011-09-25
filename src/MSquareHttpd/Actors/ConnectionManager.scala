@@ -17,7 +17,6 @@ class ConnectionManager (val httpd : M2HTTPD) extends Transducer[SocketChannel,R
   private val farm = new ThreadFarm(1024,10)
 
   override def start () {
-    super.start() 
     farm.start()
   }
 
@@ -80,7 +79,7 @@ class ConnectionManager (val httpd : M2HTTPD) extends Transducer[SocketChannel,R
 
               // Was enough input read to complete a request?
               if (conn.hasRequest) {
-                put(conn.takeRequest()) ;
+                send(conn.takeRequest());
               }
             }
           }
@@ -93,15 +92,13 @@ class ConnectionManager (val httpd : M2HTTPD) extends Transducer[SocketChannel,R
     }
   }
 
-  def run () {
-    logger.debug("Connection Manager initializing...");
-    ConnectionSelector.start() ;
-    while (true) {
-      val socket = get() ;
-      val conn = new ClientConnection(httpd,socket)
+  def receive = {
+    case AnyMessage(wrappedSocket:SocketChannel) =>
+      val conn = new ClientConnection(httpd,wrappedSocket)
       logger.debug(" * Got a requesting connection.") ;
       ConnectionSelector.add(conn) ;
-    }
+    case _ =>
+      throw new RuntimeException("Unknown message")
   }
 }
 

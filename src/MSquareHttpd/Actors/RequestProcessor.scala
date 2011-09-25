@@ -9,7 +9,6 @@ class RequestProcessor extends Transducer[Request,Reply] with Logging {
   private val farm = new ThreadFarm(1024,10)
 
   override def start () {
-    super.start() 
     farm.start()
   }
 
@@ -22,33 +21,30 @@ class RequestProcessor extends Transducer[Request,Reply] with Logging {
   var hostRouter : HostRouter = 
     EmptyHostRouter ;
 
-  /**
-   Consumes requests and farms them to request handlers.
-   */
-  def run () {
-
-    while (true) {
-      val req = get() ;
-      //logger.debug(req) ;
-
-      farm run {
+  
+  def receive = {
+    case AnyMessage(wrappedRequest: Request) => handleRequest(wrappedRequest);
+    case _ => throw new RuntimeException("unknown message");
+  }
+  
+  def handleRequest(req:Request) = {
+    farm run {
         var handler : RequestHandler = null 
         try {
           handler = hostRouter(req.headers("Host"))
           
           // If the handler produces a reply, pass it on.
           handler(req,None) match {
-            case Some (reply) => put(reply)
+            case Some (reply) => send(reply)
             case None => ()
           }
         } catch {
           case ex => {
             System.err.println("error:\n" + ex)
             val reply = new Reply(req,500,"Internal server error")
-            put(reply)
+            send(reply)
           }
         }
       }
-    }
   }
 }

@@ -51,60 +51,45 @@ import java.io.BufferedWriter
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 import com.weiglewilczek.slf4s.Logging
+import akka.actor.Actor
+
+sealed trait Message[O]
+case class AnyMessage[O](wrappedObject: O) extends Message[O]{
+	
+}
+
+object Message{
+  implicit def newMessage[O](obj : O) : AnyMessage[O] = new AnyMessage[O](obj);
+}
 
 /**
  * A coroutine is a process (in this case a thread) that communicates with other coroutines.
  */
-trait Coroutine extends Runnable {
-  def start() {
-    val myThread = new Thread(this);
-    myThread.start();
-  }
+trait Coroutine {
+  
 }
 
 /**
  * A O-producer is a coroutine that produces type-O objects for consumption by other coroutines.
  */
 trait Producer[O] extends Coroutine {
-  private val outputs =
-    new java.util.concurrent.ArrayBlockingQueue[O](1024);
-
-  /**
-   * Called by the coroutine's <code>run</code> method when it has produced a new output.
-   */
-  protected def put(output: O) {
-    outputs.put(output);
+  var receivers = Nil;
+  
+  def register[O](consumer:Consumer[O]){
+    receivers :+ consumer;
   }
-
-  /**
-   * Called by an upstream consumer when it wants a new value from this coroutine.
-   */
-  def next(): O = {
-    outputs.take();
+  def register[O,O2](transducer:Transducer[O,O2]){
+    receivers :+ transducer;
   }
-
+  
   /**
    * Composes this producing coroutine with a transducing coroutine.
    *
    * @return A fused producing coroutine.
    */
-  def ==>[O2](t: Transducer[O, O2]): Producer[O2] = {
-    val that = this;
-    new Producer[O2] {
-      def run() {
-        while (true) {
-          val o = that.next();
-          t.accept(o);
-          put(t.next());
-        }
-      }
-
-      override def start() {
-        that.start();
-        t.start();
-        super.start();
-      }
-    }
+  def ==>[O2](transducer: Transducer[O, O2]): Producer[O2] = {
+    register(transducer);
+    transducer;
   }
 
   /**
@@ -113,44 +98,25 @@ trait Producer[O] extends Coroutine {
    * @return A fused coroutine.
    */
   def ==>(consumer: Consumer[O]): Coroutine = {
-    val that = this;
-    new Coroutine {
-      def run {
-        while (true) {
-          val o = that.next();
-          consumer.accept(o);
-        }
-      }
-
-      override def start {
-        that.start();
-        consumer.start();
-        super.start();
-      }
-    }
+    register(consumer);
+    consumer;
+  }
+  
+  def send (message: Message[O]){
+	  for(val actor <- receivers if actor != Nil){
+	    Actor.actorOf(actor) ! message;
+	  }
   }
 }
 
 /**
  * An I-consumer is a coroutine that consumes type-I objects.
  */
-trait Consumer[I] extends Coroutine {
-  private val inputs =
-    new java.util.concurrent.ArrayBlockingQueue[I](1024);
-
-  /**
-   * Called when an external I-producer has a new input to provide.
-   */
-  def accept(input: I) {
-    inputs.put(input);
-  }
-
-  /**
-   * Called by the coroutine itself when it needs the next input.
-   */
-  protected def get(): I = {
-    inputs.take();
-  }
+trait Consumer[I] extends Actor with Coroutine{
+	val senders = Nil;
+	def linkBack(sender:Producer[I])={
+	  senders :+ sender;
+	}
 }
 
 /**
