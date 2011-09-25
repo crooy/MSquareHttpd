@@ -1,7 +1,8 @@
-package MSquareHttpd;
+package MSquareHttpd.Actors;
 /**
  A coroutine that consumes client connections and produces HTTP requests from them.
  */
+import MSquareHttpd._
 import java.nio.channels.spi.SelectorProvider
 import java.nio.channels.SelectionKey
 import java.nio.channels.SocketChannel
@@ -16,8 +17,10 @@ class ConnectionManager (val httpd : M2HTTPD) extends Transducer[SocketChannel,R
 
   private val farm = new ThreadFarm(1024,10)
 
-  override def start () {
-    farm.start()
+  override def startup () {
+    farm.start();
+    self.start();
+    startSenders();
   }
 
   private object ConnectionSelector extends Runnable {

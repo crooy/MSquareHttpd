@@ -1,4 +1,5 @@
-package MSquareHttpd;
+package MSquareHttpd.Actors;
+import MSquareHttpd._
 import java.net.InetAddress
 import java.nio.channels.SocketChannel
 import com.weiglewilczek.slf4s.Logging

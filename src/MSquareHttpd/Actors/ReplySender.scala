@@ -1,21 +1,25 @@
-package MSquareHttpd;
+package MSquareHttpd.Actors;
 /* 
  * A coroutine that consumes replies and sends them off without blocking.
  */
+
 import java.nio.channels.spi.SelectorProvider
 import java.nio.channels.SelectionKey
 import java.nio.channels.Selector
 import java.io.IOException
 import scala.collection.mutable.SynchronizedQueue
 import com.weiglewilczek.slf4s.Logging
+import MSquareHttpd._
 
 
 class ReplySender extends Consumer[Reply] with Logging{
 
   private val farm = new ThreadFarm(1024,10)
 
-  override def start () {
-    farm.start()
+  override def startup () {
+    farm.start();
+    self.start();
+    startSenders();
   }
 
   private object ConnectionSelector extends Runnable {

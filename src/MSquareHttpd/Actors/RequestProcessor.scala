@@ -1,5 +1,6 @@
-package MSquareHttpd;
+package MSquareHttpd.Actors;
 import com.weiglewilczek.slf4s.Logging
+import MSquareHttpd._
 
 /**
  A coroutine that consumes HTTP requests and produces HTTP replies. 
@@ -8,8 +9,10 @@ class RequestProcessor extends Transducer[Request,Reply] with Logging {
 
   private val farm = new ThreadFarm(1024,10)
 
-  override def start () {
-    farm.start()
+  override def startup () {
+    farm.start();
+    self.start();
+    startSenders();
   }
 
   /**

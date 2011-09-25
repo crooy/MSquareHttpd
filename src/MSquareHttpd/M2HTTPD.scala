@@ -33,25 +33,15 @@ package MSquareHttpd;
 
  */
 
-import java.net.InetAddress
-import java.net.InetSocketAddress
-import java.net.URLDecoder
+import java.net._
 import java.nio.ByteBuffer
-import java.nio.channels.SocketChannel
-import java.nio.channels.FileChannel
-import java.nio.channels.Selector
-import java.nio.channels.spi.SelectorProvider
-import java.nio.channels.SelectionKey
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileWriter
-import java.io.FileReader
-import java.io.BufferedReader
-import java.io.BufferedWriter
-import java.io.IOException
+import java.nio.channels._
+import java.io._
 import java.util.concurrent.ConcurrentHashMap
 import com.weiglewilczek.slf4s.Logging
 import akka.actor.Actor
+import akka.actor.ActorRef
+import MSquareHttpd.Actors._
 
 sealed trait Message[O]
 case class AnyMessage[O](wrappedObject: O) extends Message[O]{
@@ -66,20 +56,22 @@ object Message{
  * A coroutine is a process (in this case a thread) that communicates with other coroutines.
  */
 trait Coroutine {
-  
+  def startup(){};
 }
 
 /**
  * A O-producer is a coroutine that produces type-O objects for consumption by other coroutines.
  */
 trait Producer[O] extends Coroutine {
-  var receivers = Nil;
+  var receivers:List[ActorRef] = Nil;
   
   def register[O](consumer:Consumer[O]){
-    receivers :+ consumer;
+    val actor = Actor.actorOf(consumer);
+    receivers :+ actor;
   }
   def register[O,O2](transducer:Transducer[O,O2]){
-    receivers :+ transducer;
+    val actor = Actor.actorOf(transducer);
+    receivers :+ actor;
   }
   
   /**
@@ -103,26 +95,37 @@ trait Producer[O] extends Coroutine {
   }
   
   def send (message: Message[O]){
-	  for(val actor <- receivers if actor != Nil){
-	    Actor.actorOf(actor) ! message;
+	  for(val actor:ActorRef <- receivers){
+	    actor ! message;
 	  }
   }
+
 }
 
 /**
  * An I-consumer is a coroutine that consumes type-I objects.
  */
 trait Consumer[I] extends Actor with Coroutine{
-	val senders = Nil;
+	val senders:List[Producer[I]] = Nil;
 	def linkBack(sender:Producer[I])={
 	  senders :+ sender;
 	}
+	def startSenders(){
+	  self.start();
+	  for(val sender:Producer[I] <- senders){
+	    sender.startup();
+	  }
+	}
+	override def startup = startSenders;
+	
 }
 
 /**
  * An I,O-transducer consumes type-I objects and produces type-O objects.
  */
-trait Transducer[I, O] extends Consumer[I] with Producer[O]
+trait Transducer[I, O] extends Consumer[I] with Producer[O]{
+  override def startup = startSenders;
+}
 
 /**
  * Represents an HTTP request method.
@@ -175,7 +178,7 @@ class M2HTTPD {
   /**
    * A coroutine that turns sockets into HTTP requests.
    */
-  val connect = new ConnectionManager(this);
+  val connect =  new ConnectionManager(this);
 
   /**
    * A coroutine that routes and processes requests.
@@ -195,8 +198,8 @@ class M2HTTPD {
   /**
    * Starts up the HTTPD.
    */
-  def start() {
-    system.start()
+  def startup() {
+    system.startup();
   }
 }
 
@@ -210,7 +213,7 @@ object EmptyHTTPD extends Logging {
     logger.debug("Default M2HTTPD running...")
 
     val httpd = new M2HTTPD;
-    httpd.start()
+    httpd.startup()
 
   }
 }
@@ -225,7 +228,7 @@ object SimpleHTTPD extends Logging {
     val httpd = new M2HTTPD;
 
     // By default, serve from ./www/ in the current directory.
-    var docRoot = "./www/";
+    var docRoot = "/Users/ronald/Documents/dev/websites/ScrumSquare/build/site/";
 
     args match {
       case Array(newRoot) => docRoot = newRoot
@@ -239,7 +242,7 @@ object SimpleHTTPD extends Logging {
     httpd.process.hostRouter =
       new DefaultHostRouter(new SimpleFileRequestHandler(docRoot));
 
-    httpd.start()
+    httpd.startup()
 
   }
 }
