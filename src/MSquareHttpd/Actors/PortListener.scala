@@ -18,7 +18,7 @@ class PortListener(val localAddress: InetAddress,
    Opens the port and loops forever, emitting newly connected sockets.
    */
 
-  def run () {
+  override def init () {
     logger.debug("PortListener initializing...") ;
 
     var client  : java.nio.channels.SocketChannel = null ;

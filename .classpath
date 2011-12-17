@@ -6,7 +6,6 @@
 	<classpathentry kind="con" path="org.scala-ide.sdt.launching.SCALA_CONTAINER"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="slf4j-1.6.2/slf4j-api-1.6.2.jar"/>
-	<classpathentry kind="lib" path="slf4j-1.6.2/slf4j-jdk14-1.6.2.jar"/>
 	<classpathentry kind="lib" path="slf4j-1.6.2/slf4j-simple-1.6.2.jar"/>
 	<classpathentry kind="lib" path="akka-core-1.2/lib/akka/akka-actor-1.2.jar"/>
 	<classpathentry kind="output" path="bin"/>

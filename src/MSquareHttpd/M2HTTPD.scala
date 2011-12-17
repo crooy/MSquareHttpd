@@ -43,8 +43,11 @@ import akka.actor.Actor
 import akka.actor.ActorRef
 import MSquareHttpd.Actors._
 
-sealed trait Message[O]
+sealed trait Message[O]{
+  def get():O;
+}
 case class AnyMessage[O](wrappedObject: O) extends Message[O]{
+	def get():O = wrappedObject;
 	
 }
 
@@ -56,20 +59,25 @@ object Message{
  * A coroutine is a process (in this case a thread) that communicates with other coroutines.
  */
 trait Coroutine {
-  def startup(){};
+  def startup():Unit;
+  def init():Unit;
 }
 
 /**
  * A O-producer is a coroutine that produces type-O objects for consumption by other coroutines.
  */
 trait Producer[O] extends Coroutine {
-  var receivers:List[ActorRef] = Nil;
+  var receivers:List[Consumer[O]] = Nil;
   
-  def register[O](consumer:Consumer[O]){
+  private def register[O](consumer:Consumer[O]){
     receivers :+ consumer;
   }
-  def register[O,O2](transducer:Transducer[O,O2]){
+  private def register[O,O2](transducer:Transducer[O,O2]){
     receivers :+ transducer;
+  }
+  override def startup {
+	receivers.map((r)=>r.startup());
+	init();
   }
   
   /**
@@ -87,38 +95,37 @@ trait Producer[O] extends Coroutine {
    *
    * @return A fused coroutine.
    */
-  def ==>(consumer: Consumer[O]): Coroutine = {
+  def ==>(consumer: Consumer[O]): Consumer[O] = {
     register(consumer);
     consumer;
   }
   
   def send (message: Message[O]){
-	  for(val actor:ActorRef <- receivers){
-	    actor ! message;
-	  }
+    receivers.map((a)=>a!message)
   }
 
+}
+
+class CoroutineActor[X](receiver:Message[X]=>Unit) extends Actor{
+  def receive = {
+    case mesg:Message[X] => receiver(mesg)
+    case _ => throw new RuntimeException("unknown message");
+  }
 }
 
 /**
  * An I-consumer is a coroutine that consumes type-I objects.
  */
 trait Consumer[I] extends Coroutine{
-	val myActor:ActorRef;
-	val senders:List[Producer[I]] = Nil;
-	def linkBack(sender:Producer[I])={
-	  senders :+ sender;
-	}
+	val myActor = Actor.actorOf(new CoroutineActor(receive _));
 	def ! (msg:Message[I]) = {
 	  myActor ! msg;
 	}
-	def startSenders(){
-	  myActor.start();
-	  for(val sender:Producer[I] <- senders){
-	    sender.startup();
-	  }
+	override def startup {
+	  myActor.start();	  
+	  init();
 	}
-	override def startup = startSenders;
+	def receive(mesg:Message[I]);
 	
 }
 
@@ -126,7 +133,11 @@ trait Consumer[I] extends Coroutine{
  * An I,O-transducer consumes type-I objects and produces type-O objects.
  */
 trait Transducer[I, O] extends Consumer[I] with Producer[O]{
-  override def startup = startSenders;
+	override def startup {
+	  receivers.map((r)=>r.startup());
+	  myActor.start();
+	  init();
+	}
 }
 
 /**

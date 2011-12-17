@@ -17,10 +17,16 @@ class ReplySender extends Consumer[Reply] with Logging{
 
   private val farm = new ThreadFarm(1024,10)
 
-  override def startup () {
+  override def init () {
     farm.start();
-    myActor.start();
-    startSenders();
+  }
+  
+  def receive(mesg:Message[Reply]){
+	  val wrappedReply = mesg.get();
+      val conn = wrappedReply.req.connection;
+      conn.send(wrappedReply);
+      logger.debug (" * Sending a reply.") ;
+      ConnectionSelector.add(conn);
   }
 
   private object ConnectionSelector extends Runnable {
@@ -94,16 +100,6 @@ class ReplySender extends Consumer[Reply] with Logging{
       }
     }
   }
-  
-  override val myActor = Actor.actorOf(new Actor{
-	  def receive = {
-	    case AnyMessage(wrappedReply:Reply) =>
-	      val conn = wrappedReply.req.connection;
-	      conn.send(wrappedReply);
-	      logger.debug (" * Sending a reply.") ;
-	      ConnectionSelector.add(conn);
-	    case _ => throw new RuntimeException("unknown message");
-	  }
-  })
+
 
 }

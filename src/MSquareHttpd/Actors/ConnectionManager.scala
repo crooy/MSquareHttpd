@@ -18,10 +18,15 @@ class ConnectionManager (val httpd : M2HTTPD) extends Transducer[SocketChannel,R
 
   private val farm = new ThreadFarm(1024,10)
 
-  override def startup () {
+  override def init () {
     farm.start();
-    myActor.start();
-    startSenders();
+  }
+
+  def receive(mesg:Message[SocketChannel]){
+     val wrappedSocket = mesg.get();
+     val conn = new ClientConnection(httpd,wrappedSocket)
+	  logger.debug(" * Got a requesting connection.") ;
+	  ConnectionSelector.add(conn) ;
   }
 
   private object ConnectionSelector extends Runnable {
@@ -96,16 +101,7 @@ class ConnectionManager (val httpd : M2HTTPD) extends Transducer[SocketChannel,R
     }
   }
 
-  override val myActor = Actor.actorOf(new Actor{
-	  def receive = {
-	    case AnyMessage(wrappedSocket:SocketChannel) =>
-	      val conn = new ClientConnection(httpd,wrappedSocket)
-	      logger.debug(" * Got a requesting connection.") ;
-	      ConnectionSelector.add(conn) ;
-	    case _ =>
-	      throw new RuntimeException("Unknown message")
-	  }
-  })
+ 
 }
 
 

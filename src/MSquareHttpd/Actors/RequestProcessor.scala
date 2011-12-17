@@ -10,12 +10,14 @@ class RequestProcessor extends Transducer[Request,Reply] with Logging {
 
   private val farm = new ThreadFarm(1024,10)
 
-  override def startup () {
+  override def init () {
     farm.start();
-    myActor.start();
-    startSenders();
   }
-
+  
+  def receive(mesg:Message[Request]){
+    handleRequest(mesg.get()) ;
+  }
+  
   /**
    The host router determines which request handler should be used for the 
    host specified in the request.
@@ -46,11 +48,4 @@ class RequestProcessor extends Transducer[Request,Reply] with Logging {
       }
   }
   
-  override val myActor = Actor.actorOf(new Actor{ 
-	  def receive = {
-	    case AnyMessage(wrappedRequest: Request) => handleRequest(wrappedRequest);
-	    case _ => throw new RuntimeException("unknown message");
-	  }
-  })
-
 }
