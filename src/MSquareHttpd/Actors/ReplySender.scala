@@ -39,7 +39,7 @@ class ReplySender extends Consumer[Reply] with Logging{
 
 
     def add(conn : ClientConnection) {
-      newConnections :+ conn
+      newConnections += conn
       this.selector.wakeup() ;
     }
 

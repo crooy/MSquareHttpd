@@ -40,7 +40,7 @@ class ConnectionManager (val httpd : M2HTTPD) extends Transducer[SocketChannel,R
 
 
     def add(conn : ClientConnection) {
-      newConnections :+ conn
+      newConnections += conn
       this.selector.wakeup() ;
     }
 

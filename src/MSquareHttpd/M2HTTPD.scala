@@ -69,12 +69,10 @@ trait Coroutine {
 trait Producer[O] extends Coroutine {
   var receivers:List[Consumer[O]] = Nil;
   
-  private def register[O](consumer:Consumer[O]){
-    receivers :+ consumer;
+  private def register(consumer:Consumer[O]){
+    receivers = consumer::receivers;
   }
-  private def register[O,O2](transducer:Transducer[O,O2]){
-    receivers :+ transducer;
-  }
+  
   override def startup {
 	receivers.map((r)=>r.startup());
 	init();
@@ -87,7 +85,13 @@ trait Producer[O] extends Coroutine {
    */
   def ==>[O2](transducer: Transducer[O, O2]): Producer[O2] = {
     register(transducer);
-    transducer;
+    var me = this;
+    new Producer[O2]{            
+      def init(){
+        transducer.init();
+        me.init();
+      }
+    }
   }
 
   /**
@@ -95,9 +99,19 @@ trait Producer[O] extends Coroutine {
    *
    * @return A fused coroutine.
    */
-  def ==>(consumer: Consumer[O]): Consumer[O] = {
+  def ==>(consumer: Consumer[O]): Coroutine = {
     register(consumer);
-    consumer;
+    var me = this;
+    new Coroutine{
+      def startup{
+        consumer.startup();
+        me.startup();
+      }
+      def init{
+        consumer.init();
+        me.init();
+      }
+    }
   }
   
   def send (message: Message[O]){
@@ -105,6 +119,8 @@ trait Producer[O] extends Coroutine {
   }
 
 }
+
+
 
 class CoroutineActor[X](receiver:Message[X]=>Unit) extends Actor{
   def receive = {
