@@ -1,6 +1,33 @@
 
 bin
 
-slf4s
 
 .cache
+# SBT
+boot
+target
+lib_managed
+src_managed
+project/plugins/project
+
+# Mac
+.DS_Store
+
+# Eclipse
+.classpath
+.launch
+.metadata
+.project
+.scala_dependencies
+.settings
+.target
+
+# IntelliJ
+.idea
+*.iml
+*.ipr
+*.iws
+out
+
+# TextMate
+*.tmproj
