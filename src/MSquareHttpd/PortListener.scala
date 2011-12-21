@@ -1,9 +1,10 @@
-package MSquareHttpd.Actors;
-import MSquareHttpd._
+package MSquareHttpd;
 import java.net.InetAddress
 import java.nio.channels.SocketChannel
+
 import com.weiglewilczek.slf4s.Logging
-import akka.actor.Actor
+
+import MSquareHttpd._
 /**
  * A producing coroutine that listens to a port and emits
  * connected sockets.

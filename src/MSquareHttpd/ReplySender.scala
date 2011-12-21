@@ -1,39 +1,40 @@
-package MSquareHttpd.Actors;
-/**
- A coroutine that consumes client connections and produces HTTP requests from them.
+package MSquareHttpd;
+/* 
+ * A coroutine that consumes replies and sends them off without blocking.
  */
-import MSquareHttpd._
+
+import java.io.IOException
 import java.nio.channels.spi.SelectorProvider
 import java.nio.channels.SelectionKey
-import java.nio.channels.SocketChannel
-import java.io.IOException
 import java.nio.channels.Selector
-import scala.actors.threadpool.LinkedBlockingQueue
-import com.weiglewilczek.slf4s.Logging
-import scala.collection.mutable.LinkedList
-import scala.collection.mutable.SynchronizedQueue
-import akka.actor.Actor
 
-class ConnectionManager (val httpd : M2HTTPD) extends Transducer[SocketChannel,Request] with Logging {
+import scala.collection.mutable.SynchronizedQueue
+
+import com.weiglewilczek.slf4s.Logging
+
+import MSquareHttpd._
+
+
+class ReplySender extends Consumer[Reply] with Logging{
 
   private val farm = new ThreadFarm(1024,10)
 
   override def init () {
     farm.start();
   }
-
-  def receive(mesg:Message[SocketChannel]){
-     val wrappedSocket = mesg.get();
-     val conn = new ClientConnection(httpd,wrappedSocket)
-	  logger.debug(" * Got a requesting connection.") ;
-	  ConnectionSelector.add(conn) ;
+  
+  def receive(mesg:Message[Reply]){
+	  val wrappedReply = mesg.get();
+      val conn = wrappedReply.req.connection;
+      conn.send(wrappedReply);
+      logger.debug (" * Sending a reply.") ;
+      ConnectionSelector.add(conn);
   }
 
   private object ConnectionSelector extends Runnable {
 
     private val newConnections = 
       new SynchronizedQueue[ClientConnection] () ;
-
 
     private val selector : Selector = 
       SelectorProvider.provider().openSelector() ;
@@ -44,6 +45,7 @@ class ConnectionManager (val httpd : M2HTTPD) extends Transducer[SocketChannel,R
       this.selector.wakeup() ;
     }
 
+    
     def start () {
       val thread = new Thread(this) ;
       thread.start () ;
@@ -51,13 +53,13 @@ class ConnectionManager (val httpd : M2HTTPD) extends Transducer[SocketChannel,R
 
     def run () {
 
-      logger.debug("Connection Selector initialized...") 
+      logger.debug("Reply Sender Selector initialized...") 
       while (true) {
         selector.select() ;
 
 
         val selectedKeys = selector.selectedKeys.iterator() ;
-        logger.debug(" ** Reading keys selected.") ;
+        logger.debug(" ** Writing keys selected.") ;
 
         while (selectedKeys.hasNext()) {
           val key = selectedKeys.next().asInstanceOf[SelectionKey] ;
@@ -67,41 +69,39 @@ class ConnectionManager (val httpd : M2HTTPD) extends Transducer[SocketChannel,R
           if (key.isValid()) {
             
             val conn = key.attachment().asInstanceOf[ClientConnection] ;
-
-            // Remove the key so we don't immediately loop around to
-            // race on the same connection.
+            
             key.cancel() ;
 
+            if (!conn.isOpen) {
+              conn.close() ;
+            }
+            
             farm run {
               try {
-                // Read whatever is available.
-                conn.readMoreInput() ;
-
-                // Return this connection to the read selector.
-                add(conn) ;
+                logger.debug(" ** Sending reply!") ;
+                val finished = conn.flushWriteBuffers() ;
+                if (!finished) {
+                  add(conn) ;
+                } else {
+                  conn.close() ;
+                }
               } catch {
                 case (ioe : IOException) => {
                   // Socket shut down.
                   key.cancel() ;
                 }
               }
-
-              // Was enough input read to complete a request?
-              if (conn.hasRequest) {
-                send(conn.takeRequest());
-              }
             }
           }
         }
 
-        for (conn <- newConnections if (conn.isOpen)) 
-            conn.socketChannel.register(this.selector, SelectionKey.OP_READ, conn) ;
+        
+        for (conn <- newConnections) 
+          conn.socketChannel.register(this.selector, SelectionKey.OP_WRITE, conn) ;
         
       }
     }
   }
 
- 
+
 }
-
-

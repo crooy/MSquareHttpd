@@ -2,13 +2,11 @@ package MSquareHttpd;
 /**
  Represents an open HTTP connection coming from a client.
  */
-import java.nio.channels.SocketChannel
 import java.io.IOException
+import java.nio.channels.SocketChannel
 import java.nio.ByteBuffer
+
 import com.weiglewilczek.slf4s.Logging
-
-
-class ClientConer
 
 
 class ClientConnection (val httpd : M2HTTPD, 

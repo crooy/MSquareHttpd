@@ -1,7 +1,7 @@
-package MSquareHttpd.Actors;
+package MSquareHttpd;
 import com.weiglewilczek.slf4s.Logging
+
 import MSquareHttpd._
-import akka.actor.Actor
 
 /**
  A coroutine that consumes HTTP requests and produces HTTP replies. 

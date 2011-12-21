@@ -3,6 +3,8 @@ package MSquareHttpd;
  A reply to an HTTP request.
  */
 import java.nio.ByteBuffer
+
+import MSquareHttpd._
 case class Reply (val req : Request, 
                   var code : Int,
                   var data : TypedData)

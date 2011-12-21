@@ -1,5 +1,7 @@
 package MSquareHttpd;
 import scala.collection.mutable.HashMap
+import MSquareHttpd._
+
 
 /**
  A continuation-based HTTP request parser.

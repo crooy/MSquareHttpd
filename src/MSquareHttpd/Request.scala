@@ -1,6 +1,8 @@
 package MSquareHttpd;
 import java.net.URLDecoder
 import scala.collection.mutable.HashMap
+import MSquareHttpd._
+
 /**
  Represents an incoming HTTP request.
  */
