@@ -11,10 +11,12 @@ The goal of this project is to create a Scala webserver that is meant for develo
 Design
 ------
 
-The original design in M2HTTPD by Matt is based on coroutines, implemented using queues. MSquareHttpd uses the actors to communicate messages. This maintains the non-blocking nature of each building-block, but hides the queues and adds an event-driven aspect.
+The original design in M2HTTPD by Matt is based on coroutines, implemented using queues. MSquareHttpd uses Akka Actors to communicate messages. This maintains the non-blocking nature of each building-block, but hides the queues and adds an event-driven aspect.
 
 As in coroutines, there are Producers and Consumers. A Producer holds a list of Consumers, to wich it sends messages, i.e. the subscriber pattern. A Consumer has a Receive function that is called to process a Message. Combining them yields a Transducer which both sends and receives.
 
-Messages have type parameters, and all producers and consumers declare which types of messages they can receive. This way building-blocks are composeable while maintaining type safety. 
+Messages have type parameters, and all producers and consumers declare which types of messages they can receive. This way building-blocks are composeable while maintaining type safety. A producer can send messages in with the Send() function, that uses implicit conversion to create a Message[T] of an object of type T. It is strongly recommended to send Immutable objects, for more info see the [documentation page on Akka and the Java Memory Model](http://akka.io/docs/akka/snapshot/general/jmm.html).
+
+
 
 
